@@ -8,6 +8,15 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+// Release signing comes from the environment only (AGENTS.md rule 5): CI maps GitHub secrets to
+// these four variables. When any of them is missing the release build type stays unsigned, so a
+// plain `assembleRelease` still works locally and the debug build is never affected.
+val releaseSigningEnv =
+    listOf("MARQUE_KEYSTORE_PATH", "MARQUE_KEYSTORE_PASSWORD", "MARQUE_KEY_ALIAS", "MARQUE_KEY_PASSWORD")
+        .associateWith { providers.environmentVariable(it).orNull }
+        .takeIf { env -> env.values.none { it.isNullOrBlank() } }
+        ?.mapValues { it.value!! }
+
 android {
     namespace = "io.github.ardaulas.marque"
     compileSdk = 36
@@ -16,10 +25,22 @@ android {
         applicationId = "io.github.ardaulas.marque"
         minSdk = 26
         targetSdk = 36
+        // versionCode must increase monotonically with every release; bump it by hand with versionName.
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        releaseSigningEnv?.let { env ->
+            create("release") {
+                storeFile = file(env.getValue("MARQUE_KEYSTORE_PATH"))
+                storePassword = env.getValue("MARQUE_KEYSTORE_PASSWORD")
+                keyAlias = env.getValue("MARQUE_KEY_ALIAS")
+                keyPassword = env.getValue("MARQUE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -29,6 +50,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Null (unsigned) unless the environment above provided a keystore.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -67,7 +90,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Registers the activity that createComposeRule() hosts stateless screens in.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -98,4 +125,6 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.turbine)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }

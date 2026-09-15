@@ -1,18 +1,14 @@
 package io.github.ardaulas.marque.ui.makes
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import io.github.ardaulas.marque.core.result.DataError
 import io.github.ardaulas.marque.core.result.Result
-import io.github.ardaulas.marque.data.repository.VehicleRepository
 import io.github.ardaulas.marque.domain.model.Make
-import io.github.ardaulas.marque.domain.model.Model
+import io.github.ardaulas.marque.ui.FakeVehicleRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -41,19 +37,21 @@ class MakesViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun viewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) = MakesViewModel(repository, savedStateHandle)
+
     @Test
     fun `starts in Loading and shows Content once the refresh succeeds`() =
         runTest(dispatcher) {
             repository.refreshResult = Result.Success(Unit)
             repository.makesToPublishOnRefresh = listOf(Make(440, "ASTON MARTIN"))
 
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 assertEquals(MakesUiState.Loading, awaitItem())
                 advanceUntilIdle()
                 assertEquals(
-                    MakesUiState.Content(listOf(Make(440, "ASTON MARTIN")), isRefreshing = false, error = null),
+                    MakesUiState.Content(listOf(Make(440, "ASTON MARTIN")), query = "", isRefreshing = false, error = null),
                     expectMostRecentItem(),
                 )
             }
@@ -65,13 +63,18 @@ class MakesViewModelTest {
             repository.makes.value = listOf(Make(440, "ASTON MARTIN"))
             repository.refreshResult = Result.Failure(DataError.Network)
 
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 assertEquals(MakesUiState.Loading, awaitItem())
                 advanceUntilIdle()
                 assertEquals(
-                    MakesUiState.Content(listOf(Make(440, "ASTON MARTIN")), isRefreshing = false, error = DataError.Network),
+                    MakesUiState.Content(
+                        listOf(Make(440, "ASTON MARTIN")),
+                        query = "",
+                        isRefreshing = false,
+                        error = DataError.Network,
+                    ),
                     expectMostRecentItem(),
                 )
             }
@@ -82,7 +85,7 @@ class MakesViewModelTest {
         runTest(dispatcher) {
             repository.refreshResult = Result.Failure(DataError.Timeout)
 
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 assertEquals(MakesUiState.Loading, awaitItem())
@@ -96,7 +99,7 @@ class MakesViewModelTest {
         runTest(dispatcher) {
             repository.refreshResult = Result.Success(Unit)
 
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 assertEquals(MakesUiState.Loading, awaitItem())
@@ -109,7 +112,7 @@ class MakesViewModelTest {
     fun `the initial refresh is not forced but a user retry is`() =
         runTest(dispatcher) {
             repository.refreshResult = Result.Failure(DataError.Network)
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 advanceUntilIdle()
@@ -122,7 +125,7 @@ class MakesViewModelTest {
 
                 assertEquals(listOf(false, true), repository.refreshForceCalls)
                 assertEquals(
-                    MakesUiState.Content(listOf(Make(441, "TESLA")), isRefreshing = false, error = null),
+                    MakesUiState.Content(listOf(Make(441, "TESLA")), query = "", isRefreshing = false, error = null),
                     expectMostRecentItem(),
                 )
             }
@@ -135,7 +138,7 @@ class MakesViewModelTest {
             repository.refreshResult = Result.Success(Unit)
             val gate = CompletableDeferred<Unit>()
             repository.refreshGate = gate
-            val viewModel = MakesViewModel(repository)
+            val viewModel = viewModel()
 
             viewModel.uiState.test {
                 assertEquals(MakesUiState.Loading, awaitItem())
@@ -150,34 +153,72 @@ class MakesViewModelTest {
                 assertFalse(settled.isRefreshing)
             }
         }
-}
 
-private class FakeVehicleRepository : VehicleRepository {
-    val makes = MutableStateFlow<List<Make>>(emptyList())
-    var refreshResult: Result<Unit, DataError> = Result.Success(Unit)
+    @Test
+    fun `the query filters case-insensitively and ignores surrounding whitespace`() =
+        runTest(dispatcher) {
+            repository.makes.value = listOf(Make(440, "ASTON MARTIN"), Make(441, "TESLA"), Make(448, "TOYOTA"))
+            val viewModel = viewModel()
 
-    /** Simulates the network writing the cache: published into [makes] when a refresh succeeds. */
-    var makesToPublishOnRefresh: List<Make>? = null
-    val refreshForceCalls = mutableListOf<Boolean>()
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.setQuery("  to ")
+                advanceUntilIdle()
 
-    /** When set, [refreshMakes] suspends until it completes, so tests can observe the in-flight state. */
-    var refreshGate: CompletableDeferred<Unit>? = null
+                assertEquals(
+                    MakesUiState.Content(
+                        listOf(Make(440, "ASTON MARTIN"), Make(448, "TOYOTA")),
+                        query = "  to ",
+                        isRefreshing = false,
+                        error = null,
+                    ),
+                    expectMostRecentItem(),
+                )
+            }
+        }
 
-    override fun observeMakes(): Flow<List<Make>> = makes
+    @Test
+    fun `a query matching nothing is Content with an empty list, not Empty`() =
+        runTest(dispatcher) {
+            repository.makes.value = listOf(Make(441, "TESLA"))
+            val viewModel = viewModel()
 
-    override fun observeMake(makeId: Int): Flow<Make?> = makes.map { list -> list.firstOrNull { it.id == makeId } }
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.setQuery("zzz")
+                advanceUntilIdle()
 
-    override fun observeModels(makeId: Int): Flow<List<Model>> = flowOf(emptyList())
+                assertEquals(
+                    MakesUiState.Content(emptyList(), query = "zzz", isRefreshing = false, error = null),
+                    expectMostRecentItem(),
+                )
+            }
+        }
 
-    override suspend fun refreshMakes(force: Boolean): Result<Unit, DataError> {
-        refreshForceCalls += force
-        refreshGate?.await()
-        if (refreshResult is Result.Success) makesToPublishOnRefresh?.let { makes.value = it }
-        return refreshResult
-    }
+    @Test
+    fun `a query restored from saved state is applied before the first Content`() =
+        runTest(dispatcher) {
+            repository.makes.value = listOf(Make(441, "TESLA"), Make(448, "TOYOTA"))
+            val restored = SavedStateHandle(mapOf(MakesViewModel.QUERY_KEY to "tes"))
+            val viewModel = viewModel(restored)
 
-    override suspend fun refreshModels(
-        makeId: Int,
-        force: Boolean,
-    ): Result<Unit, DataError> = refreshResult
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                assertEquals(
+                    MakesUiState.Content(listOf(Make(441, "TESLA")), query = "tes", isRefreshing = false, error = null),
+                    expectMostRecentItem(),
+                )
+            }
+        }
+
+    @Test
+    fun `setQuery writes through to the SavedStateHandle`() =
+        runTest(dispatcher) {
+            val handle = SavedStateHandle()
+            val viewModel = viewModel(handle)
+
+            viewModel.setQuery("bmw")
+
+            assertEquals("bmw", handle.get<String>(MakesViewModel.QUERY_KEY))
+        }
 }

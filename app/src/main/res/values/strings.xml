@@ -1,11 +1,21 @@
 <resources>
     <string name="app_name">Marque</string>
-    <string name="makes_title">Car makes</string>
-    <string name="makes_empty">No makes cached yet.</string>
-    <string name="makes_retry">Retry</string>
+
+    <string name="action_retry">Retry</string>
+    <string name="action_back">Back</string>
+    <string name="showing_saved_data">Showing saved data. %1$s</string>
+
+    <string name="makes_search_hint">Search makes</string>
+    <string name="makes_search_clear">Clear search</string>
+    <string name="makes_empty">No makes cached yet</string>
+    <string name="makes_no_match">No makes match</string>
+
+    <string name="models_title_fallback">Models</string>
+    <string name="models_empty">No models cached yet</string>
+
     <string name="error_network">No connection. Check your network and try again.</string>
     <string name="error_timeout">The request timed out.</string>
-    <string name="error_http">The server returned an error (HTTP %1$d).</string>
-    <string name="error_serialization">The server sent a response the app could not read.</string>
+    <string name="error_http">Server error (HTTP %1$d).</string>
+    <string name="error_serialization">Unexpected response from the server.</string>
     <string name="error_unknown">Something went wrong.</string>
 </resources>
