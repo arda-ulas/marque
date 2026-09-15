@@ -1,8 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.androidx.room)
     alias(libs.plugins.ktlint)
 }
 
@@ -38,7 +40,15 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gates the OkHttp logging interceptor.
+        buildConfig = true
     }
+}
+
+// The Room Gradle plugin wires schema export (exportSchema = true) to this directory; the JSON
+// files are committed so schema changes show up in review.
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 ktlint {
@@ -63,5 +73,24 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
+    // Network: Retrofit + kotlinx.serialization converter over OkHttp.
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.kotlinx.serialization.json)
+
+    // Local cache: Room (room-ktx was merged into room-runtime in 2.7, so it is not declared).
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.mockwebserver3)
+
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.turbine)
 }

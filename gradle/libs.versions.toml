@@ -22,13 +22,14 @@ navigation-compose = "2.9.8"
 room = "2.8.5"
 core-ktx = "1.18.0"
 
-# Networking / serialization (catalog only until the network block)
+# Networking / serialization
 retrofit = "3.0.0"
-okhttp = "5.5.0"
+okhttp = "5.4.0"                # 5.5.0's okhttp-android AAR declares minCompileSdk=37; 5.4.0 is the newest with minCompileSdk<=36
 kotlinx-serialization = "1.11.0"
 
 # Testing
 kotlinx-coroutines = "1.11.0"
+mockwebserver = "5.4.0"       # com.squareup.okhttp3:mockwebserver3 (OkHttp 5 renamed artifact and package); kept in lockstep with okhttp
 turbine = "1.2.1"
 junit4 = "4.13.2"
 androidx-test-ext-junit = "1.3.0"
@@ -73,6 +74,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+mockwebserver3 = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "mockwebserver" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidx-test-runner" }
@@ -84,5 +86,6 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+androidx-room = { id = "androidx.room", version.ref = "room" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
