@@ -80,6 +80,11 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
 
+    // Pins the coroutines runtime in the app APK to the same version as kotlinx-coroutines-test.
+    // AndroidX pulls in an older transitive version; the androidTest APK shares the app's copy,
+    // and 1.11.0's test builders call into core APIs that the older version lacks.
+    implementation(libs.kotlinx.coroutines.android)
+
     // Local cache: Room (room-ktx was merged into room-runtime in 2.7, so it is not declared).
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
