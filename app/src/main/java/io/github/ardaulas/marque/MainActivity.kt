@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.ardaulas.marque.ui.hello.HelloScreen
+import io.github.ardaulas.marque.ui.makes.MakesScreen
 import io.github.ardaulas.marque.ui.theme.MarqueTheme
 
 @AndroidEntryPoint
@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MarqueTheme {
-                HelloScreen()
+                MakesScreen()
             }
         }
     }
